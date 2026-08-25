@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Vocabulary Wheel',
         short_name: 'VocabWheel',
-        description: 'Japanese Vocabulary Wheel Game',
+        description: 'Japanese Vocabulary Wheel Game 1',
         theme_color: '#343a40',
         background_color: '#ffffff',
         display: 'standalone',
