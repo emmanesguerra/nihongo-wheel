@@ -1,5 +1,6 @@
 <template>
     <main class="container py-4">
+
         <div class="d-flex align-items-center gap-2 mb-3">
             <router-link to="/" class="btn btn-outline-secondary bg-light" title="Back to Home">
                 <i class="bi bi-house-door-fill"></i>
@@ -13,33 +14,18 @@
 
                 <div class="wheel-container" :style="{ width: wheelSize + 'px', height: wheelSize + 'px' }">
                     <div class="pointer">▼</div>
-
                     <div class="wheel" :style="wheelStyle">
-                        <!-- OUTER -> CENTER LABELS -->
                         <div v-for="(item, index) in remainingItems" :key="item.id || index" class="wheel-label-outer"
                             :style="getLabelStyle(index)">
                             <span class="label-text-outer">{{ item.meaning }}</span>
                         </div>
-
-                        <div class="wheel-center">
+                        <button class="wheel-center text-dark" :disabled="isSpinning || remainingItems.length === 0"
+                            @click="spinWheel">
                             <span v-if="!isSpinning">SPIN</span>
-                            <span v-else>...</span>
-                        </div>
+                            <span v-else class="spin-icon">...</span>
+                        </button>
                     </div>
                 </div>
-
-                <div v-if="currentItem" class="result-box mt-4">
-                    <div class="result-number">#{{ selectedItems.length }}</div>
-                    <div class="result-kanji">{{ currentItem.kanji || currentItem.kana }}</div>
-                    <div class="result-meaning">{{ currentItem.meaning }}</div>
-                    <div class="result-hint">✏ Write the Kana</div>
-                </div>
-
-                <button v-if="remainingItems.length > 0" class="btn btn-primary btn-lg mt-4 px-5" :disabled="isSpinning"
-                    @click="spinWheel">
-                    <i class="bi" :class="isSpinning ? 'bi-arrow-repeat spin-icon' : 'bi-play-fill'"></i>
-                    {{ isSpinning ? 'Spinning...' : 'SPIN' }}
-                </button>
 
                 <div v-if="remainingItems.length === 0 && !isSpinning" class="mt-4">
                     <h4 class="text-success">🎉 Finished!</h4>
@@ -47,6 +33,60 @@
                 </div>
             </div>
         </div>
+
+        <!-- POPUP MODAL -->
+        <transition name="pop">
+            <div v-if="showPopup && currentItem" class="popup-overlay" @click.self="closePopup">
+                <div class="popup-card">
+                    <button class="popup-close" @click="closePopup">×</button>
+                    <div class="popup-badge">#{{ selectedItems.length }} / {{ selectedItems.length +
+                        remainingItems.length }}</div>
+
+                    <div v-if="currentItem.kanji" class="popup-kanji mt-3">
+                        <span class="popup-kana-label">Kanji</span>
+                        <span class="popup-kanji-text">{{ currentItem.kanji }}</span>
+                    </div>
+                    <div class="popup-divider"></div>
+                    <div class="popup-kana">
+                        <span class="popup-kana-label">Meaning</span>
+                        <span class="popup-kana-text japanese text-capitalize ">{{ currentItem.meaning }}</span>
+                    </div>
+                    <div class="popup-hint">✏ Write the Kana</div>
+                    <button class="btn btn-primary btn-lg w-100 mt-3" @click="closePopup">
+                        Continue <i class="bi bi-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        </transition>
+
+        <!-- REVIEW -->
+        <div v-if="selectedItems.length > 0 && remainingItems.length === 0 && !isSpinning" class="card mx-auto mt-4"
+            style="max-width: 900px;">
+            <div class="card-header text-center fw-bold">Review Sequence</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center">#</th>
+                                <th class="text-center">Kanji</th>
+                                <th>Meaning</th>
+                                <th class="text-center">Kana</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(item, index) in selectedItems" :key="index">
+                                <td class="text-center fw-bold">{{ index + 1 }}</td>
+                                <td class="text-center japanese fw-bold">{{ item.kanji || item.kana }}</td>
+                                <td>{{ item.meaning }}</td>
+                                <td class="text-center japanese">{{ item.kana }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </main>
 </template>
 
@@ -66,6 +106,7 @@ const selectedItems = ref([])
 const currentItem = ref(null)
 const rotation = ref(0)
 const isSpinning = ref(false)
+const showPopup = ref(false)
 const wheelSize = ref(600)
 
 const updateWheelSize = () => {
@@ -79,12 +120,13 @@ const updateWheelSize = () => {
 const wheelColors = ['#ff6b6b', '#ffa94d', '#ffd43b', '#69db7c', '#38d9a9', '#4dabf7', '#748ffc', '#9775fa', '#da77f2', '#f783ac']
 
 const generateVocabulary = () => {
-    const available = allVocabulary.value.filter(item => item.lesson >= lessonStart.value && item.lesson <= lessonEnd.value)
+    const available = allVocabulary.value.filter(i => i.lesson >= lessonStart.value && i.lesson <= lessonEnd.value)
     const shuffled = [...available].sort(() => Math.random() - 0.5)
     remainingItems.value = shuffled.slice(0, Math.min(numQuestions.value, shuffled.length))
     selectedItems.value = []
     currentItem.value = null
     rotation.value = 0
+    showPopup.value = false
 }
 
 const wheelStyle = computed(() => {
@@ -98,40 +140,54 @@ const wheelStyle = computed(() => {
     return { transform: `rotate(${rotation.value}deg)`, background: `conic-gradient(${slices.join(', ')})` }
 })
 
-// === OUTER -> CENTER ===
 const getLabelStyle = (index) => {
     const count = remainingItems.value.length
     if (!count) return {}
     const segment = 360 / count
     const angle = index * segment + segment / 2
-
-    // This is the key: height = from edge to center
-    const height = wheelSize.value / 2 - 8 // 8px padding from edge
-
-    // Flip to keep readable: right side = 90deg, left side = -90deg
-    const isLeft = angle > 90 && angle < 270
-
-    return {
-        height: `${height}px`,
-        transform: `translateX(-50%) rotate(${angle}deg)`,
-        // we rotate text inside, not the container
-    }
+    const height = wheelSize.value / 2 - 8
+    return { height: `${height}px`, transform: `translateX(-50%) rotate(${angle}deg)` }
 }
 
+const closePopup = () => { showPopup.value = false }
+
 const spinWheel = () => {
-    if (isSpinning.value || !remainingItems.value.length) return
+    if (isSpinning.value ||!remainingItems.value.length) return
+
     isSpinning.value = true
     currentItem.value = null
+    showPopup.value = false
+
     const count = remainingItems.value.length
     const selectedIndex = Math.floor(Math.random() * count)
     const segment = 360 / count
-    const targetAngle = 360 - (selectedIndex * segment + segment / 2)
-    rotation.value += 360 * 5 + targetAngle
+
+    // Center angle of the slice we picked (in wheel's local space)
+    const localCenter = selectedIndex * segment + segment / 2
+
+    // Current rotation modulo 360
+    const currentMod = rotation.value % 360
+
+    // We want localCenter + finalRotation = 360 (top pointer)
+    // So desired final mod = 360 - localCenter
+    const desiredMod = (360 - localCenter) % 360
+
+    // How much to rotate from currentMod to desiredMod
+    let delta = desiredMod - currentMod
+    if (delta < 0) delta += 360
+
+    const extraSpins = 360 * 5
+
+    rotation.value += delta + extraSpins
+
     setTimeout(() => {
-        selectedItems.value.push(remainingItems.value[selectedIndex])
-        currentItem.value = remainingItems.value[selectedIndex]
+        const selected = remainingItems.value[selectedIndex]
+        selectedItems.value.push(selected)
+        currentItem.value = selected
         remainingItems.value.splice(selectedIndex, 1)
         isSpinning.value = false
+        showPopup.value = true
+        if (navigator.vibrate) navigator.vibrate(80)
     }, 5000)
 }
 
@@ -174,19 +230,15 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
 }
 
-/* === NEW OUTER -> CENTER LABEL === */
 .wheel-label-outer {
     position: absolute;
     left: 50%;
     top: 0;
     width: 0;
-    /* thin spoke */
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    /* STARTS AT OUTER EDGE */
     transform-origin: bottom center;
-    /* rotates around center of wheel */
     pointer-events: none;
     z-index: 2;
 }
@@ -194,13 +246,9 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
 .label-text-outer {
     position: absolute;
     top: 18px;
-    /* distance from outer edge */
-    /* This makes text flow from outer -> center */
     writing-mode: vertical-rl;
     text-orientation: mixed;
     transform: rotate(180deg);
-    /* so it reads top -> bottom = outer -> inner */
-
     font-family: 'NotoSerifJP', serif;
     font-weight: bold;
     color: #212529;
@@ -208,12 +256,8 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     font-size: clamp(0.7rem, 2vw, 0.95rem);
     line-height: 1;
     white-space: nowrap;
-    letter-spacing: 0.5px;
-
     max-height: 85%;
-    /* don't go all the way to center */
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .wheel-center {
@@ -231,19 +275,7 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     align-items: center;
     font-weight: bold;
     z-index: 10;
-}
-
-.result-box {
-    border: 1px solid #dee2e6;
-    border-radius: 10px;
-    padding: 20px;
-    background: #f8f9fa;
-}
-
-.result-kanji {
-    font-size: 2.5rem;
-    font-family: 'NotoSerifJP', serif;
-    font-weight: bold;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 
 .japanese {
@@ -271,6 +303,117 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     text-shadow: #0f0f0f 1px 1px, #0a0a0a 2px 2px;
 }
 
+/* POPUP */
+.popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-bottom));
+}
+
+.popup-card {
+    position: relative;
+    background: white;
+    width: min(92vw, 420px);
+    border-radius: 20px;
+    padding: 28px 24px 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.popup-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    border: none;
+    background: #f1f3f5;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.popup-badge {
+    display: inline-block;
+    background: #f1f3f5;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: #868e96;
+    margin-bottom: 10px;
+}
+
+.popup-kanji {
+    font-size: clamp(2.2rem, 10vw, 3.2rem);
+    font-family: 'NotoSerifJP', serif;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 6px;
+}
+
+.popup-meaning {
+    font-size: 1.1rem;
+    color: #495057;
+}
+
+.popup-divider {
+    height: 1px;
+    background: #e9ecef;
+    margin: 18px 0;
+}
+
+.popup-kana {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.popup-kana-label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #868e96;
+    margin-bottom: 4px;
+}
+
+.popup-kana-text {
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
+.popup-hint {
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: #868e96;
+}
+
+.pop-enter-active {
+    animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pop-leave-active {
+    animation: popIn 0.2s reverse ease-in;
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.85) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
 @media (max-width: 768px) {
     .wheel {
         border-width: 6px;
@@ -279,6 +422,14 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     .label-text-outer {
         top: 10px;
         font-size: clamp(0.6rem, 2.8vw, 0.85rem);
+    }
+
+    .wheel-center {
+        width: 19vw;
+        height: 19vw;
+        max-width: 80px;
+        max-height: 80px;
+        border-width: 4px;
     }
 }
 </style>
