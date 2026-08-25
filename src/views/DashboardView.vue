@@ -8,7 +8,7 @@
                 <div class="mb-3">
                     <label class="form-label"><strong>Number of Items</strong></label>
                     <select v-model="numQuestions" class="form-select">
-                        <option v-for="n in [10, 20, 50, 75, 100]" :key="n" :value="n">{{ n }}
+                        <option v-for="n in [5, 10, 20, 50, 75, 100]" :key="n" :value="n">{{ n }}
                         </option>
                     </select>
                 </div>
