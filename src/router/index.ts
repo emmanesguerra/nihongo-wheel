@@ -1,0 +1,24 @@
+import { createRouter, createWebHistory } from 'vue-router'
+
+const router = createRouter({
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes: [
+        {
+            path: '/',
+            name: 'dashboard',
+            component: () => import('../views/DashboardView.vue')
+        },
+        {
+            path: '/vocab-list',
+            name: 'vocab-list',
+            component: () => import('../views/VocabularyListView.vue')
+        },
+        {
+            path: '/alphabet',
+            name: 'alphabet',
+            component: () => import('../views/AlphabetView.vue')
+        }
+    ],
+})
+
+export default router
