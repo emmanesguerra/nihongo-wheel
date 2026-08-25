@@ -5,16 +5,20 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: '/nihongo-wheel/',
+
   plugins: [
     vue(),
+
     VitePWA({
       registerType: 'autoUpdate',
+
       manifest: {
         name: 'Nihongo Wheel',
         short_name: 'NihongoWheel',
         description: 'Japanese Vocabulary Practice App',
         background_color: '#fff',
-        theme_color: '#1976d2',  // your preferred theme color
+        theme_color: '#1976d2',
+
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -28,14 +32,16 @@ export default defineConfig({
           },
         ],
       },
+
       workbox: {
         // You can add runtime caching rules here if needed
       },
     }),
   ],
+
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
-  }
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
 })
