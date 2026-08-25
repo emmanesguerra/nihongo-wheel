@@ -68,6 +68,36 @@ const lessonStart = ref()
 const lessonEnd = ref()
 const errorMessage = ref('')
 
+const startExam = () => {
+
+    errorMessage.value = ''
+
+    if (!lessonStart.value) {
+        errorMessage.value = 'Please enter a starting lesson.'
+        return
+    }
+
+    if (!lessonEnd.value) {
+        lessonEnd.value = lessonStart.value
+    }
+
+    if (lessonEnd.value < lessonStart.value) {
+        errorMessage.value =
+            'End lesson cannot be lower than start lesson.'
+        return
+    }
+
+    router.push({
+        path: '/wheel',
+        query: {
+            items: numQuestions.value,
+            start: lessonStart.value,
+            end: lessonEnd.value
+        }
+    })
+
+}
+
 </script>
 
 <style scoped>
@@ -88,8 +118,8 @@ const errorMessage = ref('')
 .kanji-row {
     background-color: #f9dad3;
 }
-.card
-{
+
+.card {
     background: #f7f5f5;
 }
 </style>
