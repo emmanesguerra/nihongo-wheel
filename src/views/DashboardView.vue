@@ -36,19 +36,16 @@
             <div class="card-body text-start">
                 <!-- View Vocabulary Button -->
                 <div class="mt-2 d-flex justify-content-center gap-2">
-                    <router-link to="/history" class="btn btn-outline-secondary w-50">
-                        <i class="bi bi-clock-history me-1"></i> Past Results
-                    </router-link>
-                    <router-link to="/alphabet" class="btn btn-outline-secondary w-50 kanji-row">
-                        <i class="bi bi-journal-bookmark me-1"></i> Alphabet Table
-                    </router-link>
-                </div>
-                <div class="mt-2 d-flex justify-content-center gap-2">
                     <router-link to="/vocab-list?set=book1" class="btn btn-outline-secondary w-50 n5-row">
                         <i class="bi bi-journal-bookmark me-1"></i> Lessons 01–25
                     </router-link>
                     <router-link to="/vocab-list?set=book2" class="btn btn-outline-secondary w-50 n5-row">
                         <i class="bi bi-journal-bookmark me-1"></i> Lessons 26–50
+                    </router-link>
+                </div>
+                <div class="mt-2 d-flex justify-content-center gap-2">
+                    <router-link to="/alphabet" class="btn btn-outline-secondary kanji-row">
+                        <i class="bi bi-journal-bookmark me-1"></i> Hiragana and Katakana Table
                     </router-link>
                 </div>
             </div>

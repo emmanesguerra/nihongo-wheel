@@ -10,7 +10,15 @@
 
         <div class="card mx-auto" style="max-width: 900px;">
             <div class="card-body text-center">
-                <p class="text-muted mb-2">Remaining: <strong>{{ remainingItems.length }}</strong></p>
+                <!-- REMAINING + HISTORY BUTTON -->
+                <p class="text-muted mb-2 d-flex justify-content-center align-items-center gap-2 flex-wrap">
+                    <span>Remaining: <strong>{{ remainingItems.length }}</strong></span>
+                    <span v-if="selectedItems.length > 0">|</span>
+                    <button v-if="selectedItems.length > 0" class="btn btn-sm btn-outline-dark rounded-pill"
+                        @click="showHistory = true">
+                        <i class="bi bi-clock-history me-1"></i>Sequence ({{ selectedItems.length }})
+                    </button>
+                </p>
 
                 <div class="wheel-container" :style="{ width: wheelSize + 'px', height: wheelSize + 'px' }">
                     <div class="pointer">▼</div>
@@ -19,6 +27,7 @@
                             :style="getLabelStyle(index)">
                             <span class="label-text-outer">{{ item.meaning }}</span>
                         </div>
+                        <!-- CENTER IS THE BUTTON NOW -->
                         <button class="wheel-center text-dark" :disabled="isSpinning || remainingItems.length === 0"
                             @click="spinWheel">
                             <span v-if="!isSpinning">SPIN</span>
@@ -30,11 +39,14 @@
                 <div v-if="remainingItems.length === 0 && !isSpinning" class="mt-4">
                     <h4 class="text-success">🎉 Finished!</h4>
                     <p>All vocabulary items have been used.</p>
+                    <button class="btn btn-outline-dark rounded-pill mt-2" @click="showHistory = true">
+                        <i class="bi bi-list-ol me-1"></i>View Full Sequence
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- POPUP MODAL -->
+        <!-- QUESTION POPUP -->
         <transition name="pop">
             <div v-if="showPopup && currentItem" class="popup-overlay" @click.self="closePopup">
                 <div class="popup-card">
@@ -49,7 +61,7 @@
                     <div class="popup-divider"></div>
                     <div class="popup-kana">
                         <span class="popup-kana-label">Meaning</span>
-                        <span class="popup-kana-text japanese text-capitalize ">{{ currentItem.meaning }}</span>
+                        <span class="popup-kana-text japanese text-capitalize">{{ currentItem.meaning }}</span>
                     </div>
                     <div class="popup-hint">✏ Write the Kana</div>
                     <button class="btn btn-primary btn-lg w-100 mt-3" @click="closePopup">
@@ -59,7 +71,38 @@
             </div>
         </transition>
 
-        <!-- REVIEW -->
+        <!-- SEQUENCE HISTORY POPUP - DOES NOT RESET WHEEL -->
+        <transition name="pop">
+            <div v-if="showHistory" class="popup-overlay" @click.self="showHistory = false">
+                <div class="popup-card"
+                    style="width: min(94vw, 500px); max-height: 85vh; display:flex; flex-direction:column; text-align:left;">
+                    <button class="popup-close" @click="showHistory = false">×</button>
+                    <h5 class="fw-bold mb-1 text-center">Selected Sequence</h5>
+                    <p class="text-muted small mb-3 text-center">{{ selectedItems.length }} items so far — wheel
+                        continues</p>
+
+                    <div style="overflow-y:auto; flex:1; border:1px solid #eee; border-radius:12px;">
+                        <div v-for="(item, i) in selectedItems" :key="i"
+                            class="d-flex align-items-center gap-2 p-2 border-bottom"
+                            :class="{ 'bg-light': currentItem && currentItem === item }">
+                            <div class="fw-bold text-muted text-center" style="width:28px;">{{ i + 1 }}</div>
+                            <div class="japanese fw-bold" style="min-width:70px; font-size:1.2rem;">{{ item.kanji }}</div>
+                            <div class="flex-grow-1">
+                                <div class="small fw-semibold text-capitalize">{{ item.meaning }}</div>
+                            </div>
+                            <div v-if="currentItem && currentItem === item" class="badge bg-primary">now</div>
+                        </div>
+                        <div v-if="selectedItems.length === 0" class="p-4 text-center text-muted">No picks yet</div>
+                    </div>
+
+                    <button class="btn btn-dark w-100 mt-3" @click="showHistory = false">
+                        Back to Wheel
+                    </button>
+                </div>
+            </div>
+        </transition>
+
+        <!-- FINAL REVIEW TABLE -->
         <div v-if="selectedItems.length > 0 && remainingItems.length === 0 && !isSpinning" class="card mx-auto mt-4"
             style="max-width: 900px;">
             <div class="card-header text-center fw-bold">Review Sequence</div>
@@ -77,7 +120,7 @@
                         <tbody>
                             <tr v-for="(item, index) in selectedItems" :key="index">
                                 <td class="text-center fw-bold">{{ index + 1 }}</td>
-                                <td class="text-center japanese fw-bold">{{ item.kanji || item.kana }}</td>
+                                <td class="text-center japanese fw-bold">{{ item.kanji }}</td>
                                 <td>{{ item.meaning }}</td>
                                 <td class="text-center japanese">{{ item.kana }}</td>
                             </tr>
@@ -107,6 +150,7 @@ const currentItem = ref(null)
 const rotation = ref(0)
 const isSpinning = ref(false)
 const showPopup = ref(false)
+const showHistory = ref(false)
 const wheelSize = ref(600)
 
 const updateWheelSize = () => {
@@ -127,6 +171,7 @@ const generateVocabulary = () => {
     currentItem.value = null
     rotation.value = 0
     showPopup.value = false
+    showHistory.value = false
 }
 
 const wheelStyle = computed(() => {
@@ -152,8 +197,7 @@ const getLabelStyle = (index) => {
 const closePopup = () => { showPopup.value = false }
 
 const spinWheel = () => {
-    if (isSpinning.value ||!remainingItems.value.length) return
-
+    if (isSpinning.value || !remainingItems.value.length) return
     isSpinning.value = true
     currentItem.value = null
     showPopup.value = false
@@ -161,23 +205,12 @@ const spinWheel = () => {
     const count = remainingItems.value.length
     const selectedIndex = Math.floor(Math.random() * count)
     const segment = 360 / count
-
-    // Center angle of the slice we picked (in wheel's local space)
     const localCenter = selectedIndex * segment + segment / 2
-
-    // Current rotation modulo 360
     const currentMod = rotation.value % 360
-
-    // We want localCenter + finalRotation = 360 (top pointer)
-    // So desired final mod = 360 - localCenter
     const desiredMod = (360 - localCenter) % 360
-
-    // How much to rotate from currentMod to desiredMod
     let delta = desiredMod - currentMod
     if (delta < 0) delta += 360
-
     const extraSpins = 360 * 5
-
     rotation.value += delta + extraSpins
 
     setTimeout(() => {
@@ -265,17 +298,30 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 85px;
-    height: 85px;
+    width: 95px;
+    height: 95px;
     border-radius: 50%;
     background: white;
     border: 6px solid #343a40;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-weight: bold;
+    font-weight: 800;
+    font-size: 1.1rem;
     z-index: 10;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3), 0 0 0 4px white;
+    cursor: pointer;
+    transition: transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.wheel-center:active:not(:disabled) {
+    transform: translate(-50%, -50%) scale(0.92);
+}
+
+.wheel-center:disabled {
+    cursor: not-allowed;
+    opacity: 0.9;
 }
 
 .japanese {
@@ -303,7 +349,7 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     text-shadow: #0f0f0f 1px 1px, #0a0a0a 2px 2px;
 }
 
-/* POPUP */
+/* POPUPS */
 .popup-overlay {
     position: fixed;
     inset: 0;
@@ -357,17 +403,6 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     margin-bottom: 6px;
 }
 
-.popup-meaning {
-    font-size: 1.1rem;
-    color: #495057;
-}
-
-.popup-divider {
-    height: 1px;
-    background: #e9ecef;
-    margin: 18px 0;
-}
-
 .popup-kana {
     background: #f8f9fa;
     border-radius: 12px;
@@ -386,6 +421,18 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
 .popup-kana-text {
     font-size: 1.6rem;
     font-weight: bold;
+}
+
+.popup-kanji-text {
+    font-size: clamp(2.2rem, 10vw, 3.2rem);
+    font-family: 'NotoSerifJP', serif;
+    font-weight: 800;
+}
+
+.popup-divider {
+    height: 1px;
+    background: #e9ecef;
+    margin: 18px 0;
 }
 
 .popup-hint {
@@ -427,9 +474,10 @@ onUnmounted(() => window.removeEventListener('resize', updateWheelSize))
     .wheel-center {
         width: 19vw;
         height: 19vw;
-        max-width: 80px;
-        max-height: 80px;
+        max-width: 85px;
+        max-height: 85px;
         border-width: 4px;
+        font-size: 0.9rem;
     }
 }
 </style>
